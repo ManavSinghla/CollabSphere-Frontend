@@ -12,6 +12,8 @@ export default function Dashboard() {
   const [isCreatingWorkspace, setIsCreatingWorkspace] = useState(false);
   const [newWorkspaceName, setNewWorkspaceName] = useState('');
   const [showWorkspaceDropdown, setShowWorkspaceDropdown] = useState(false);
+  const [isInvitingMember, setIsInvitingMember] = useState(false);
+  const [memberEmail, setMemberEmail] = useState('');
 
   useEffect(() => {
     fetchWorkspaces();
@@ -23,6 +25,20 @@ export default function Dashboard() {
       createWorkspace(newWorkspaceName);
       setNewWorkspaceName('');
       setIsCreatingWorkspace(false);
+    }
+  };
+
+  const handleInviteMember = async (e) => {
+    e.preventDefault();
+    if (memberEmail.trim() && currentWorkspace) {
+      try {
+        await useWorkspaceStore.getState().addMember(currentWorkspace._id, memberEmail);
+        setMemberEmail('');
+        setIsInvitingMember(false);
+        alert('Member added successfully!');
+      } catch (err) {
+        alert(err);
+      }
     }
   };
 
@@ -72,6 +88,13 @@ export default function Dashboard() {
                 >
                   <Plus className="w-4 h-4" />
                   Create Workspace
+                </button>
+                <button
+                  onClick={() => { setIsInvitingMember(true); setShowWorkspaceDropdown(false); }}
+                  className="w-full flex items-center gap-2 p-2 mt-1 rounded-lg hover:bg-slate-700 text-slate-300 transition-colors text-sm font-medium"
+                >
+                  <User className="w-4 h-4" />
+                  Invite Member
                 </button>
               </div>
             </div>
@@ -179,6 +202,46 @@ export default function Dashboard() {
                   className="px-5 py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
                 >
                   {isLoading ? 'Creating...' : 'Create Workspace'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* Invite Member Modal */}
+      {isInvitingMember && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-surface border border-slate-700 rounded-2xl w-full max-w-md p-6 shadow-2xl">
+            <h2 className="text-2xl font-bold text-white mb-2">Invite a Member</h2>
+            <p className="text-slate-400 text-sm mb-6">Add someone to <strong>{currentWorkspace?.name}</strong>.</p>
+            
+            <form onSubmit={handleInviteMember}>
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-slate-300 mb-2">Email Address</label>
+                <input
+                  type="email"
+                  required
+                  autoFocus
+                  className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
+                  placeholder="name@example.com"
+                  value={memberEmail}
+                  onChange={(e) => setMemberEmail(e.target.value)}
+                />
+              </div>
+              <div className="flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsInvitingMember(false)}
+                  className="px-4 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={!memberEmail.trim()}
+                  className="px-5 py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
+                >
+                  Invite
                 </button>
               </div>
             </form>

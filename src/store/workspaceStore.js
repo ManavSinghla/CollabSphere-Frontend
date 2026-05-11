@@ -59,6 +59,21 @@ const useWorkspaceStore = create((set, get) => ({
 
   setCurrentWorkspace: (workspace) => {
     set({ currentWorkspace: workspace });
+  },
+
+  addMember: async (workspaceId, email) => {
+    const { user } = useAuthStore.getState();
+    if (!user) return;
+
+    try {
+      const config = { headers: { Authorization: `Bearer ${user.token}` } };
+      await axios.post(`${API_URL}/api/workspaces/${workspaceId}/members`, { email }, config);
+      get().fetchWorkspaces();
+      return true;
+    } catch (error) {
+      console.error(error);
+      throw error.response?.data?.message || 'Failed to add member';
+    }
   }
 }));
 
