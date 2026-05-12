@@ -3,6 +3,7 @@ import useAuthStore from '../store/authStore';
 import useWorkspaceStore from '../store/workspaceStore';
 import Chat from '../components/Chat';
 import Documents from '../components/Documents';
+import ProfileSettings from '../components/ProfileSettings';
 import { LogOut, MessageSquare, FileText, Settings, User, Plus, ChevronDown, Check } from 'lucide-react';
 
 export default function Dashboard() {
@@ -167,11 +168,8 @@ export default function Dashboard() {
             </div>
           )}
           {activeTab === 'settings' && (
-            <div className="max-w-2xl mx-auto w-full">
-              <div className="bg-surface p-6 rounded-2xl border border-slate-800/60 shadow-lg">
-                <h3 className="text-xl text-white font-medium mb-6 flex items-center gap-2"><User className="w-5 h-5"/> Profile Settings</h3>
-                {/* Profile settings implementation */}
-              </div>
+            <div className="h-full">
+              <ProfileSettings />
             </div>
           )}
         </div>
