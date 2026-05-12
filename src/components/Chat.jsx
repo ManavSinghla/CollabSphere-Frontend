@@ -2,7 +2,10 @@ import { useEffect, useState, useRef } from 'react';
 import useChatStore from '../store/chatStore';
 import useWorkspaceStore from '../store/workspaceStore';
 import useAuthStore from '../store/authStore';
-import { Hash, Send, Plus, Users } from 'lucide-react';
+import { Hash, Send, Plus, Users, Paperclip, X, Download } from 'lucide-react';
+import axios from 'axios';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export default function Chat() {
   const { currentWorkspace } = useWorkspaceStore();
@@ -22,7 +25,10 @@ export default function Chat() {
   const [messageText, setMessageText] = useState('');
   const [isCreatingChannel, setIsCreatingChannel] = useState(false);
   const [newChannelName, setNewChannelName] = useState('');
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
   const messagesEndRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     connectSocket();
@@ -39,11 +45,35 @@ export default function Chat() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleSendMessage = (e) => {
+  const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (messageText.trim()) {
-      sendMessage(messageText);
-      setMessageText('');
+    if (!messageText.trim() && !selectedFile) return;
+
+    let uploadedAttachments = [];
+    if (selectedFile) {
+      setIsUploading(true);
+      try {
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+        const config = { headers: { Authorization: `Bearer ${user.token}` } };
+        const { data } = await axios.post(`${API_URL}/api/upload`, formData, config);
+        uploadedAttachments.push(data.url);
+      } catch (err) {
+        console.error('Upload failed', err);
+        setIsUploading(false);
+        return;
+      }
+      setIsUploading(false);
+    }
+
+    sendMessage(messageText, uploadedAttachments);
+    setMessageText('');
+    setSelectedFile(null);
+  };
+
+  const handleFileChange = (e) => {
+    if (e.target.files[0]) {
+      setSelectedFile(e.target.files[0]);
     }
   };
 
@@ -133,7 +163,27 @@ export default function Chat() {
                           ? 'bg-indigo-500 text-white rounded-tr-sm' 
                           : 'bg-surface text-slate-200 border border-slate-700/50 rounded-tl-sm'
                       }`}>
-                        {msg.text}
+                        {msg.attachments && msg.attachments.length > 0 && (
+                          <div className="mb-2">
+                            {msg.attachments.map((url, i) => {
+                              const isImage = url.match(/\.(jpeg|jpg|gif|png|webp)$/i) || url.includes('res.cloudinary.com/v');
+                              
+                              return isImage ? (
+                                <div key={i} className="relative group inline-block mb-2">
+                                  <img src={url} alt="attachment" className="rounded-lg max-w-xs max-h-64 object-contain" />
+                                  <a href={url} target="_blank" rel="noreferrer" download className="absolute bottom-2 right-2 bg-slate-900/70 text-white p-1.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity hover:bg-indigo-500">
+                                    <Download className="w-4 h-4" />
+                                  </a>
+                                </div>
+                              ) : (
+                                <a key={i} href={url} target="_blank" rel="noreferrer" download className="flex items-center gap-2 p-2 bg-slate-800/50 rounded-lg text-indigo-300 hover:text-indigo-200 text-xs mb-2 w-max border border-slate-700/50">
+                                  <Download className="w-4 h-4" /> Download File
+                                </a>
+                              );
+                            })}
+                          </div>
+                        )}
+                        {msg.text && <p className="whitespace-pre-wrap">{msg.text}</p>}
                       </div>
                     </div>
                   </div>
@@ -143,20 +193,43 @@ export default function Chat() {
             </div>
 
             <div className="p-4 border-t border-slate-800/60 bg-surface/30">
+              {selectedFile && (
+                <div className="mb-3 flex items-center gap-3 bg-slate-800/50 p-3 rounded-xl border border-slate-700 w-max">
+                  <Paperclip className="w-4 h-4 text-slate-400" />
+                  <span className="text-sm text-slate-300 truncate max-w-[200px]">{selectedFile.name}</span>
+                  <button onClick={() => setSelectedFile(null)} className="text-slate-400 hover:text-red-400">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
               <form onSubmit={handleSendMessage} className="flex gap-2">
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  onChange={handleFileChange} 
+                  className="hidden" 
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-400 px-4 rounded-xl transition-colors flex items-center justify-center"
+                >
+                  <Paperclip className="w-5 h-5" />
+                </button>
                 <input
                   type="text"
                   placeholder={`Message #${currentChannel.name}`}
                   className="flex-1 bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
                   value={messageText}
                   onChange={(e) => setMessageText(e.target.value)}
+                  disabled={isUploading}
                 />
                 <button
                   type="submit"
-                  disabled={!messageText.trim()}
+                  disabled={isUploading || (!messageText.trim() && !selectedFile)}
                   className="bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 text-white px-5 rounded-xl transition-colors flex items-center justify-center shadow-lg shadow-indigo-500/20"
                 >
-                  <Send className="w-5 h-5" />
+                  <Send className={`w-5 h-5 ${isUploading ? 'animate-pulse' : ''}`} />
                 </button>
               </form>
             </div>

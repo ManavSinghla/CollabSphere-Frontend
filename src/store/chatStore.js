@@ -95,15 +95,16 @@ const useChatStore = create((set, get) => ({
     }
   },
 
-  sendMessage: (text) => {
+  sendMessage: (text, attachments = []) => {
     const { currentChannel } = get();
     const { user } = useAuthStore.getState();
-    if (!currentChannel || !user || !socket || !text.trim()) return;
+    if (!currentChannel || !user || !socket || (!text.trim() && attachments.length === 0)) return;
 
     socket.emit('send_message', {
       channelId: currentChannel._id,
       senderId: user._id,
-      text
+      text,
+      attachments
     });
   }
 }));
