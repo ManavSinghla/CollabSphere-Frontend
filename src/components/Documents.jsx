@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
-import ReactQuill from 'react-quill';
-import 'react-quill/dist/quill.snow.css';
+import ReactQuill from 'react-quill-new';
+import 'react-quill-new/dist/quill.snow.css';
 import useDocumentStore from '../store/documentStore';
 import useWorkspaceStore from '../store/workspaceStore';
-import { FileText, Plus, Users, Clock } from 'lucide-react';
+import { FileText, Plus, Users, Clock, Trash2, Edit2, Check } from 'lucide-react';
 
 export default function Documents() {
   const { currentWorkspace } = useWorkspaceStore();
@@ -15,11 +15,15 @@ export default function Documents() {
     updateDocumentContent, 
     connectSocket, 
     disconnectSocket,
-    createDocument
+    createDocument,
+    deleteDocument,
+    updateDocumentTitle
   } = useDocumentStore();
 
   const [isCreatingDocument, setIsCreatingDocument] = useState(false);
   const [newDocumentTitle, setNewDocumentTitle] = useState('');
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editTitleValue, setEditTitleValue] = useState('');
 
   // Handle Quill change safely
   const [editorValue, setEditorValue] = useState('');
@@ -52,6 +56,19 @@ export default function Documents() {
     }
   };
 
+  const handleUpdateTitle = () => {
+    if (editTitleValue.trim() && editTitleValue !== currentDocument.title) {
+      updateDocumentTitle(currentDocument._id, editTitleValue);
+    }
+    setIsEditingTitle(false);
+  };
+
+  const handleDeleteDocument = () => {
+    if (window.confirm('Are you sure you want to delete this document? This cannot be undone.')) {
+      deleteDocument(currentDocument._id);
+    }
+  };
+
   const handleEditorChange = (content) => {
     setEditorValue(content);
     updateDocumentContent(content);
@@ -71,6 +88,7 @@ export default function Documents() {
     toolbar: [
       [{ 'header': [1, 2, 3, false] }],
       ['bold', 'italic', 'underline', 'strike', 'blockquote'],
+      [{ 'color': [] }, { 'background': [] }],
       [{'list': 'ordered'}, {'list': 'bullet'}, {'indent': '-1'}, {'indent': '+1'}],
       ['link', 'image', 'code-block'],
       ['clean']
@@ -118,22 +136,58 @@ export default function Documents() {
         {currentDocument ? (
           <>
             <div className="h-14 border-b border-slate-800/60 flex items-center justify-between px-6 bg-surface/30 backdrop-blur-sm">
-              <h3 className="text-white font-medium flex items-center gap-2 text-lg">
+              <div className="flex items-center gap-3 flex-1">
                 <FileText className="w-5 h-5 text-indigo-400" />
-                {currentDocument.title}
-              </h3>
-              <div className="flex items-center text-xs text-slate-400 bg-slate-800/50 px-3 py-1 rounded-full">
-                <Clock className="w-3 h-3 mr-1" /> Auto-saving
+                {isEditingTitle ? (
+                  <div className="flex items-center gap-2">
+                    <input 
+                      type="text" 
+                      value={editTitleValue}
+                      onChange={(e) => setEditTitleValue(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleUpdateTitle()}
+                      className="bg-slate-800/50 border border-indigo-500 rounded px-2 py-1 text-white text-sm focus:outline-none"
+                      autoFocus
+                    />
+                    <button onClick={handleUpdateTitle} className="text-emerald-400 hover:text-emerald-300">
+                      <Check className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <h3 className="text-white font-medium flex items-center gap-2 text-lg">
+                    {currentDocument.title}
+                    <button 
+                      onClick={() => {
+                        setEditTitleValue(currentDocument.title);
+                        setIsEditingTitle(true);
+                      }} 
+                      className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-indigo-400 transition-opacity ml-2"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                    </button>
+                  </h3>
+                )}
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center text-xs text-slate-400 bg-slate-800/50 px-3 py-1 rounded-full">
+                  <Clock className="w-3 h-3 mr-1" /> Auto-saving
+                </div>
+                <button 
+                  onClick={handleDeleteDocument}
+                  className="text-slate-400 hover:text-red-400 p-1.5 rounded-lg hover:bg-slate-800 transition-colors"
+                  title="Delete Document"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto bg-white editor-wrapper">
+            <div className="flex-1 overflow-y-auto bg-white text-black editor-wrapper">
               <ReactQuill 
                 theme="snow" 
                 value={editorValue} 
                 onChange={handleEditorChange}
                 modules={modules}
-                className="h-full"
+                className="h-full text-black"
               />
             </div>
           </>

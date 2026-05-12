@@ -114,6 +114,43 @@ const useDocumentStore = create((set, get) => ({
     }, 1000);
 
     set({ saveTimeout: timeout });
+  },
+
+  updateDocumentTitle: async (documentId, title) => {
+    const { user } = useAuthStore.getState();
+    if (!user) return;
+
+    // Optimistic UI
+    set((state) => {
+      const documents = state.documents.map(d => d._id === documentId ? { ...d, title } : d);
+      const currentDocument = state.currentDocument?._id === documentId ? { ...state.currentDocument, title } : state.currentDocument;
+      return { documents, currentDocument };
+    });
+
+    try {
+      const config = { headers: { Authorization: `Bearer ${user.token}` } };
+      await axios.put(`${API_URL}/api/documents/${documentId}`, { title }, config);
+    } catch (error) {
+      console.error(error);
+    }
+  },
+
+  deleteDocument: async (documentId) => {
+    const { user } = useAuthStore.getState();
+    if (!user) return;
+
+    try {
+      const config = { headers: { Authorization: `Bearer ${user.token}` } };
+      await axios.delete(`${API_URL}/api/documents/${documentId}`, config);
+      
+      set((state) => {
+        const documents = state.documents.filter(d => d._id !== documentId);
+        const currentDocument = state.currentDocument?._id === documentId ? (documents[0] || null) : state.currentDocument;
+        return { documents, currentDocument };
+      });
+    } catch (error) {
+      console.error(error);
+    }
   }
 }));
 
